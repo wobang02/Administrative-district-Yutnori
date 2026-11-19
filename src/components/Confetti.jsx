@@ -1,7 +1,7 @@
 // 정답·우승 축하 꽃가루 (CSS 애니메이션)
 const COLORS = ['#e5484d', '#2f6fde', '#e7a600', '#1f9d63', '#8b5cf6', '#ff8a3d']
 
-export default function Confetti({ count = 90 }) {
+export default function Confetti({ count = 36 }) {
   return (
     <div className="confetti" aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (

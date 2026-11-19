@@ -195,10 +195,11 @@ h1, h2, p { margin: 0; }
 .capture-text { position: absolute; left: 0; top: -60px; transform: translateX(-50%); white-space: nowrap; font-weight: 900; font-size: 2rem; color: #b42318; -webkit-text-stroke: 1px #fff; text-shadow: 0 3px 0 #fff, 0 0 10px #fff; animation: popText 1.2s .3s both; }
 @keyframes popText { 0% { opacity: 0; transform: translateX(-50%) scale(.4); } 25% { opacity: 1; transform: translateX(-50%) scale(1.15); } 70% { opacity: 1; transform: translateX(-50%) scale(1); } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
 
-.flight { position: absolute; transform: translate(-50%, -85%); transition: left 1.5s ease-in-out, top 1.5s ease-in-out; z-index: 60; pointer-events: none; animation: bob .4s ease-in-out infinite alternate; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
+.flight { position: absolute; transform: translate(-50%, -85%); transition: left 1.5s ease-in-out, top 1.5s ease-in-out; z-index: 60; pointer-events: none; will-change: left, top; }
+.flight > div > svg { animation: bob .4s ease-in-out infinite alternate; }
 .rotor { transform-origin: 60px 8px; animation: rotor .12s linear infinite; }
 @keyframes rotor { 50% { transform: scaleX(.15); } }
-@keyframes bob { to { margin-top: -8px; } }
+@keyframes bob { to { transform: translateY(-8px); } }
 
 .drag-ghost { position: fixed; transform: translate(-50%, -50%) scale(1.1); pointer-events: none; z-index: 200; filter: drop-shadow(0 12px 10px rgba(0,0,0,.3)); }
 
@@ -251,10 +252,11 @@ h1, h2, p { margin: 0; }
 /* 룰렛 */
 .roulette { position: relative; width: min(440px, 70vh, 100%); aspect-ratio: 1; }
 .roulette-svg { width: 100%; height: 100%; overflow: visible; }
-.roulette-svg > g { transform-origin: 0 0; }
-.roulette-pointer { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 36px solid var(--sejong); z-index: 2; filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+.roulette-spin { position: absolute; inset: 0; will-change: transform; }
+.roulette-hub-layer { position: absolute; inset: 0; pointer-events: none; }
+.roulette-pointer { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 36px solid var(--sejong); z-index: 2; }
 .roulette-label { font-size: 26px; font-weight: 900; fill: var(--ink); }
-.roulette-label.is-picked { fill: var(--sejong); font-size: 30px; }
+.roulette-label.is-picked { fill: var(--sejong); }
 .roulette-hub { fill: #fff; font-size: 26px; font-weight: 900; }
 .roulette-result { font-size: 2.2rem; font-weight: 900; color: var(--sejong); animation: modalIn .4s both; }
 .roulette-result.is-good { color: #1f8a4c; }
@@ -301,3 +303,9 @@ h1, h2, p { margin: 0; }
 .step-btn.is-back { border-style: dashed; }
 .step-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--team); }
 .step-btn:disabled { box-shadow: none; border-color: var(--line); }
+
+/* 컴퓨터에서 '애니메이션 줄이기'를 켠 경우 장식 효과를 끕니다 */
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+  .node-hint, .token.is-selected, .flight > div > svg, .rotor, .win-avatar { animation: none !important; }
+}

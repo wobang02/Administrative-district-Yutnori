@@ -51,8 +51,13 @@ function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, radial =
       <h2 className="modal-title">{title}</h2>
       <div className="roulette">
         <div className="roulette-pointer" />
-        <svg viewBox="-250 -250 500 500" className="roulette-svg">
-          <g style={{ transform: `rotate(${rotation}deg)`, transition: phase === 'ready' ? 'none' : 'transform 4.2s cubic-bezier(.12,.7,.18,1)' }}>
+        {/* 회전은 그림 전체(HTML 요소)에 걸어야 브라우저가 가볍게(GPU로) 처리해요 */}
+        <svg
+          viewBox="-250 -250 500 500"
+          className="roulette-svg roulette-spin"
+          style={{ transform: `rotate(${rotation}deg)`, transition: phase === 'ready' ? 'none' : 'transform 4.2s cubic-bezier(.12,.7,.18,1)' }}
+        >
+          <g>
             {items.map((it, i) => (
               <g key={i}>
                 <path d={slicePath(i)} fill={it.color} stroke="#fff" strokeWidth="3" />
@@ -71,6 +76,8 @@ function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, radial =
               </g>
             ))}
           </g>
+        </svg>
+        <svg viewBox="-250 -250 500 500" className="roulette-svg roulette-hub-layer">
           <circle r="44" fill="#2a2420" />
           <text y="9" textAnchor="middle" className="roulette-hub">{hub}</text>
         </svg>

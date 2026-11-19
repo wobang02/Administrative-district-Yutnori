@@ -366,7 +366,7 @@ export default function App() {
           <QuizModal
             team={pendingTeam}
             nodeName={NODES[pending.nodeId].short}
-            onCorrect={() => { sfx.correct(); setConfetti((c) => c + 1); dispatch({ type: 'TO_BONUS' }) }}
+            onCorrect={() => { sfx.correct(); dispatch({ type: 'TO_BONUS' }) }}
             onWrong={() => { sfx.wrong(); dispatch({ type: 'CLOSE_EVENT' }) }}
           />
         </div>
