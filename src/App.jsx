@@ -38,6 +38,7 @@ export default function App() {
   const [askReset, setAskReset] = useState(false)
   const [saved, setSaved] = useState(loadSaved)
   const [noticeVisible, setNoticeVisible] = useState(false)
+  const [catchBanner, setCatchBanner] = useState(null) // 잡기 성공 안내
   const [swapFrom, setSwapFrom] = useState(null) // 퀴즈 룰렛 '위치 바꾸기' 대기 상태
   const boardRef = useRef(null)
 
@@ -70,9 +71,20 @@ export default function App() {
   useEffect(() => {
     if (state.fx.seq === lastFx.current) return
     lastFx.current = state.fx.seq
-    if (state.fx.captures) sfx.capture()
-    else if (state.fx.arrived.length) sfx.move()
+    if (state.fx.captures) {
+      sfx.capture()
+      const hunter = state.pieces.find((p) => p.id === state.fx.arrived[0])
+      const victims = [...new Set(state.fx.captures.pieces.map((p) => p.teamId))]
+      if (hunter) setCatchBanner({ seq: state.fx.seq, teamId: hunter.teamId, victims, count: state.fx.captures.pieces.length })
+    } else if (state.fx.arrived.length) sfx.move()
   }, [state.fx])
+
+  // ── 잡기 안내는 4초 뒤 사라짐 (눌러서 바로 닫을 수도 있어요)
+  useEffect(() => {
+    if (!catchBanner) return
+    const t = setTimeout(() => setCatchBanner(null), 4000)
+    return () => clearTimeout(t)
+  }, [catchBanner])
 
   // ── 이벤트 팝업 등장음
   useEffect(() => { if (pending) setTimeout(sfx.event, 350) }, [pending])
@@ -102,6 +114,7 @@ export default function App() {
     setFlyingIds([])
     setSelectedId(null)
     setSwapFrom(null)
+    setCatchBanner(null)
     dispatch({ type: 'UNDO' })
   }, [state.history.length])
 
@@ -411,6 +424,19 @@ export default function App() {
         />
       )}
 
+      {catchBanner && teams[catchBanner.teamId] && (
+        <button
+          key={catchBanner.seq}
+          className="catch-banner"
+          style={{ '--team': teams[catchBanner.teamId].color }}
+          onClick={() => setCatchBanner(null)}
+        >
+          <span className="catch-sub">
+            {catchBanner.victims.map((v) => teams[v]?.name).join(', ')} 말 {catchBanner.count}개를 잡았어요!
+          </span>
+          <strong>{teams[catchBanner.teamId].name}, 윷을 한 번 더 던지세요!</strong>
+        </button>
+      )}
       {confetti > 0 && <Confetti key={confetti} />}
       {state.notice && <div key={state.notice.seq} className={`notice ${noticeVisible ? 'is-on' : ''}`}>{state.notice.text}</div>}
     </div>
