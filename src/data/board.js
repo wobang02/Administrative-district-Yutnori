@@ -57,17 +57,22 @@ export const FINISH_NODE = 16
 const SEA = new Set(['1-2', '2-3', '25-29', '29-30', '30-28'])
 export const EDGES = NODES.flatMap((n) => n.next.map((b) => ({ a: n.id, b, sea: SEA.has(`${n.id}-${b}`) })))
 
-// 세종 출장 룰렛에 나오는 남한 17개 시·도 (윷판 칸의 short 이름과 같아야 합니다)
-export const REGIONS_17 = [
+// 세종 출장 룰렛에 나오는 행정구역 (윷판 칸의 short 이름과 같아야 합니다)
+// 남한 17개 시·도 + 북한 10개 도·직할시. 도착점인 나선은 바로 우승이 되므로 뺐어요.
+export const REGIONS_SOUTH = [
   '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종',
   '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주',
 ]
+export const REGIONS_NORTH = [
+  '평양', '평남', '평북', '자강', '양강', '함남', '함북', '황남', '황북', '강원(북)',
+]
+export const ROULETTE_REGIONS = [...REGIONS_SOUTH, ...REGIONS_NORTH]
 
 export const nodeByName = (name) => NODES.find((n) => n.short === name || n.name === name)
 
 export const EVENT_INFO = {
   jeju: { title: '제주', desc: '풍랑주의보(1회 쉬기) 또는 비행기 타고 서울로' },
-  sejong: { title: '세종', desc: '긴급 출장 명령 룰렛으로 전국 어디든 순간 이동' },
+  sejong: { title: '세종', desc: '긴급 출장 명령 룰렛으로 남북한 어디든 순간 이동' },
   quiz: { title: '퀴즈 칸', desc: '행정구역 퀴즈! 맞히면 보상 룰렛을 돌려요 (좋은 칸·나쁜 칸이 섞여 있어요)' },
   kumgang: { title: '금강산국제관광특구', desc: '일만 이천 봉 구경! 윷을 한 번 더 던져요' },
   junction: { title: '갈림길 (인천, 강원)', desc: '갈림길에 딱 멈추면 다음에 갈 길을 고를 수 있어요' },

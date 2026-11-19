@@ -1,17 +1,17 @@
 // 룰렛 팝업
 //  - Wheel: 칸 목록(items)만 넘기면 어떤 룰렛이든 만들 수 있는 공통 부품
-//  - SejongRoulette: 세종 '긴급 출장 명령' (17개 시·도 중 한 곳)
+//  - SejongRoulette: 세종 '긴급 출장 명령' (남북한 27개 행정구역 중 한 곳)
 //  - BonusRoulette: 퀴즈 정답 보상 (좋은 칸·나쁜 칸이 섞여 있음)
 import { useEffect, useRef, useState } from 'react'
 import Modal from './Modal.jsx'
 import AnimalIcon from './AnimalIcon.jsx'
-import { REGIONS_17 } from '../data/board.js'
+import { ROULETTE_REGIONS, REGIONS_NORTH } from '../data/board.js'
 import { sfx } from '../game/sound.js'
 import { ro } from '../game/korean.js'
 
 const R = 230
 
-function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, resultFor, onDone }) {
+function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, radial = false, resultFor, onDone }) {
   const N = items.length
   const SLICE = 360 / N
   const [rotation, setRotation] = useState(0)
@@ -57,8 +57,12 @@ function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, resultFo
               <g key={i}>
                 <path d={slicePath(i)} fill={it.color} stroke="#fff" strokeWidth="3" />
                 <text
-                  transform={`rotate(${i * SLICE}) translate(0 ${-R + 46})`}
-                  textAnchor="middle"
+                  // radial: 칸이 많을 때 글자를 바깥→가운데 방향으로 세워서 겹치지 않게
+                  // (왼쪽 절반은 글자가 뒤집히지 않도록 반대로 돌려요)
+                  transform={!radial ? `rotate(${i * SLICE}) translate(0 ${-R + 46})`
+                    : i * SLICE > 180 ? `rotate(${i * SLICE + 90}) translate(${-(R - 16)} 0)` : `rotate(${i * SLICE - 90}) translate(${R - 16} 0)`}
+                  textAnchor={!radial ? 'middle' : i * SLICE > 180 ? 'start' : 'end'}
+                  dominantBaseline={radial ? 'central' : undefined}
                   className={`roulette-label ${picked === i ? 'is-picked' : ''}`}
                   style={{ fontSize: labelSize }}
                 >
@@ -90,10 +94,17 @@ function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, resultFo
   )
 }
 
-const REGION_COLORS = ['#ffe7a8', '#cfe6ff', '#ffd6cf', '#d4f1df', '#eadcff']
+// 남한 칸은 따뜻한 색, 북한 칸은 차가운 색으로 구분
+const SOUTH_COLORS = ['#ffe7a8', '#ffd6cf', '#d4f1df', '#ffe2bf']
+const NORTH_COLORS = ['#cfe6ff', '#eadcff', '#c9eef0']
 
 export function SejongRoulette({ team, onDone }) {
-  const items = REGIONS_17.map((name, i) => ({ label: name, color: REGION_COLORS[i % REGION_COLORS.length] }))
+  const north = new Set(REGIONS_NORTH)
+  let si = 0, ni = 0
+  const items = ROULETTE_REGIONS.map((name) => ({
+    label: name,
+    color: north.has(name) ? NORTH_COLORS[ni++ % NORTH_COLORS.length] : SOUTH_COLORS[si++ % SOUTH_COLORS.length],
+  }))
   return (
     <Wheel
       team={team}
@@ -102,6 +113,8 @@ export function SejongRoulette({ team, onDone }) {
       title="긴급 출장 명령!"
       hub="출장"
       items={items}
+      radial
+      labelSize={19}
       resultFor={(it) =>
         it.label === '세종'
           ? { text: '세종에서 그대로 근무합니다', button: '확인' }
