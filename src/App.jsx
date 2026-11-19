@@ -6,13 +6,13 @@ import { reducer, initialState, groupOf } from './game/reducer.js'
 import { NODES, EVENT_INFO, nodeByName, FINISH_NODE } from './data/board.js'
 import { sfx, setMuted } from './game/sound.js'
 import { useDrag } from './game/useDrag.js'
-import { STEPS, allTargets } from './game/paths.js'
+import { STEPS, allTargets, forwardMain, backward } from './game/paths.js'
 import { i_ga, ro } from './game/korean.js'
 import SetupScreen from './components/SetupScreen.jsx'
 import Board from './components/Board.jsx'
 import Scoreboard from './components/Scoreboard.jsx'
 import TeacherPanel from './components/TeacherPanel.jsx'
-import Roulette from './components/Roulette.jsx'
+import { SejongRoulette, BonusRoulette } from './components/Roulette.jsx'
 import Token from './components/Token.jsx'
 import Confetti from './components/Confetti.jsx'
 import { JejuModal, QuizModal, KumgangModal, ConfirmReset, WinModal } from './components/EventModals.jsx'
@@ -38,6 +38,7 @@ export default function App() {
   const [askReset, setAskReset] = useState(false)
   const [saved, setSaved] = useState(loadSaved)
   const [noticeVisible, setNoticeVisible] = useState(false)
+  const [swapFrom, setSwapFrom] = useState(null) // 퀴즈 룰렛 '위치 바꾸기' 대기 상태
   const boardRef = useRef(null)
 
   const { teams, pieces, phase, pending, admin } = state
@@ -100,6 +101,7 @@ export default function App() {
     setFlight(null)
     setFlyingIds([])
     setSelectedId(null)
+    setSwapFrom(null)
     dispatch({ type: 'UNDO' })
   }, [state.history.length])
 
@@ -108,7 +110,7 @@ export default function App() {
     const onKey = (e) => {
       if (phase !== 'play') return
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo() }
-      if (e.key === 'Escape') setSelectedId(null)
+      if (e.key === 'Escape') { setSelectedId(null); setSwapFrom(null) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -118,6 +120,17 @@ export default function App() {
   const onTapPiece = (pieceId) => {
     const p = pieces.find((x) => x.id === pieceId)
     if (!p) return
+    if (swapFrom) { // 위치 바꾸기: 상대 말을 누르면 자리 교환
+      if (p.teamId === swapFrom.teamId || typeof p.pos !== 'number') {
+        dispatch({ type: 'NOTICE', text: '지도 위에 있는 다른 모둠의 말을 눌러 주세요' })
+        return
+      }
+      sfx.flight()
+      dispatch({ type: 'SWAP', pieceIds: swapFrom.pieceIds, targetPos: p.pos })
+      dispatch({ type: 'NOTICE', text: `${i_ga(teams[swapFrom.teamId].name)} ${teams[p.teamId].name} 말과 자리를 바꿨어요` })
+      setSwapFrom(null)
+      return
+    }
     if (selectedPiece && typeof p.pos === 'number' && p.pos !== selectedPiece.pos) return move(selectedPiece.id, p.pos)
     if (selectedIds.includes(pieceId)) return setSelectedId(null)
     sfx.select()
@@ -139,6 +152,41 @@ export default function App() {
     setFlyingIds(pieceIds)
     setTimeout(() => dispatch({ type: 'TELEPORT', pieceIds, to }), 60)
     setTimeout(() => { setFlight(null); setFlyingIds([]) }, 1700)
+  }
+
+  // ── 퀴즈 보상 룰렛 결과 적용
+  const applyBonus = (item) => {
+    const { teamId, pieceIds, nodeId } = pending
+    const team = teams[teamId]
+    const pos = pieces.find((x) => x.id === pieceIds[0])?.pos ?? nodeId
+    const say = (text) => dispatch({ type: 'NOTICE', text })
+    switch (item.key) {
+      case 'extra':
+        dispatch({ type: 'CLOSE_EVENT' }); say(`${i_ga(team.name)} 윷을 한 번 더 던져요`); break
+      case 'rest':
+        dispatch({ type: 'JEJU_REST', teamId }); say(`${i_ga(team.name)} 다음 차례를 한 번 쉬어요`); break
+      case 'piggy':
+        dispatch({ type: 'PIGGYBACK', teamId, nodeId: pos }); break
+      case 'back1':
+      case 'back2': {
+        const to = backward(pos, item.key === 'back1' ? 1 : 2)
+        if (to === pos) { dispatch({ type: 'CLOSE_EVENT' }); say('더 뒤로 갈 칸이 없어요'); break }
+        sfx.move(); dispatch({ type: 'TELEPORT', pieceIds, to }); break
+      }
+      case 'fwd2': {
+        sfx.move(); dispatch({ type: 'TELEPORT', pieceIds, to: forwardMain(pos, 2) }); break
+      }
+      case 'swap': {
+        dispatch({ type: 'CLOSE_EVENT' })
+        const any = pieces.some((x) => x.teamId !== teamId && typeof x.pos === 'number')
+        if (!any) { say('바꿀 상대 말이 지도 위에 없어요'); break }
+        setSelectedId(null)
+        setSwapFrom({ teamId, pieceIds })
+        break
+      }
+      default:
+        dispatch({ type: 'CLOSE_EVENT' })
+    }
   }
 
   const startGame = (names, pieceCount) => { setSelectedId(null); dispatch({ type: 'START', names, pieceCount }) }
@@ -181,7 +229,15 @@ export default function App() {
 
       <main className="stage">
         <aside className="side side-left">
-          {selectedPiece ? (
+          {swapFrom ? (
+            <div className="selection-card" style={{ '--team': teams[swapFrom.teamId].color }}>
+              <p className="sel-title"><b>{teams[swapFrom.teamId].name}</b> 위치 바꾸기</p>
+              <p className="sel-hint">지도에서 자리를 바꿀 <b>다른 모둠의 말</b>을 눌러 주세요</p>
+              <div className="sel-actions">
+                <button className="btn-ghost" onClick={() => setSwapFrom(null)}>바꾸지 않기</button>
+              </div>
+            </div>
+          ) : selectedPiece ? (
             <div className="selection-card" style={{ '--team': teams[selectedPiece.teamId].color }}>
               <p className="sel-title">
                 <b>{teams[selectedPiece.teamId].name}</b> 말 {selectedIds.length}개 선택
@@ -275,7 +331,6 @@ export default function App() {
           pieces={pieces}
           turn={state.turn}
           rest={state.rest}
-          quiz={state.quiz}
           selectedIds={selectedIds}
           pieceHandlers={handlers}
           dragOverNode={drag?.over}
@@ -298,9 +353,14 @@ export default function App() {
           <QuizModal
             team={pendingTeam}
             nodeName={NODES[pending.nodeId].short}
-            onCorrect={() => { sfx.correct(); setConfetti((c) => c + 1); dispatch({ type: 'QUIZ_CORRECT', teamId: pending.teamId }) }}
+            onCorrect={() => { sfx.correct(); setConfetti((c) => c + 1); dispatch({ type: 'TO_BONUS' }) }}
             onWrong={() => { sfx.wrong(); dispatch({ type: 'CLOSE_EVENT' }) }}
           />
+        </div>
+      )}
+      {pending?.type === 'bonus' && (
+        <div className="delayed">
+          <BonusRoulette team={pendingTeam} nodeName={NODES[pending.nodeId].short} onDone={applyBonus} />
         </div>
       )}
       {pending?.type === 'kumgang' && (
@@ -322,7 +382,7 @@ export default function App() {
       )}
       {pending?.type === 'sejong' && (
         <div className="delayed">
-          <Roulette
+          <SejongRoulette
             team={pendingTeam}
             onDone={(region) => {
               dispatch({ type: 'CLOSE_EVENT' })

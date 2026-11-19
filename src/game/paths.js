@@ -36,3 +36,24 @@ export function targetsFor(pos, n) {
 export function allTargets(pos) {
   return Object.fromEntries(STEPS.map((s) => [s.key, targetsFor(pos, s.n)]))
 }
+
+// 갈림길에서는 첫 번째 길로 n칸 앞으로 (나선에 닿으면 'goal')
+export function forwardMain(pos, n) {
+  let cur = pos === 'home' ? START_NODE : pos
+  for (let k = 0; k < n; k++) {
+    if (cur === FINISH_NODE) return 'goal'
+    cur = NEXT[cur][0]
+  }
+  return cur === FINISH_NODE ? 'goal' : cur
+}
+
+// 들어온 길(첫 번째)로 n칸 뒤로. 부산(출발)보다 더 뒤로는 가지 않아요.
+export function backward(pos, n) {
+  let cur = pos
+  for (let k = 0; k < n; k++) {
+    const p = PRED[cur]
+    if (!p || !p.length) break
+    cur = p[0]
+  }
+  return cur
+}

@@ -116,6 +116,25 @@ export function reducer(s, a) {
         pending: null,
       }
 
+    case 'TO_BONUS': // 퀴즈 정답 → 보상 룰렛으로
+      return s.pending ? { ...s, pending: { ...s.pending, type: 'bonus' } } : s
+
+    case 'PIGGYBACK': { // 대기 중인 같은 팀 말 하나를 nodeId 로 올려 업기
+      const p = s.pieces.find((x) => x.teamId === a.teamId && x.pos === 'home')
+      if (!p) return { ...s, pending: null, notice: { seq: (s.notice?.seq || 0) + 1, text: '업을 대기 말이 없어요' } }
+      return afterMove(s, { pieces: s.pieces.map((x) => (x.id === p.id ? { ...x, pos: a.nodeId } : x)), captured: [] }, [p.id], a.nodeId, { pending: null })
+    }
+
+    case 'SWAP': { // 내 말(업힌 말 포함)과 상대 말의 자리를 서로 바꾸기
+      const mine = s.pieces.find((x) => x.id === a.pieceIds[0])
+      if (!mine || typeof mine.pos !== 'number') return s
+      const myPos = mine.pos
+      const otherIds = s.pieces.filter((x) => x.pos === a.targetPos && x.teamId !== mine.teamId).map((x) => x.id)
+      const pieces = s.pieces.map((x) =>
+        a.pieceIds.includes(x.id) ? { ...x, pos: a.targetPos } : otherIds.includes(x.id) ? { ...x, pos: myPos } : x)
+      return afterMove(s, { pieces, captured: [] }, [...a.pieceIds, ...otherIds], a.targetPos, { pending: null })
+    }
+
     case 'CLOSE_EVENT':
       return { ...s, pending: null }
 

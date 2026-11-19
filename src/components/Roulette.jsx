@@ -1,27 +1,30 @@
-// 세종 '긴급 출장 명령' 룰렛: 17개 시·도 중 한 곳을 무작위로 고릅니다.
-import { useRef, useState } from 'react'
+// 룰렛 팝업
+//  - Wheel: 칸 목록(items)만 넘기면 어떤 룰렛이든 만들 수 있는 공통 부품
+//  - SejongRoulette: 세종 '긴급 출장 명령' (17개 시·도 중 한 곳)
+//  - BonusRoulette: 퀴즈 정답 보상 (좋은 칸·나쁜 칸이 섞여 있음)
+import { useEffect, useRef, useState } from 'react'
 import Modal from './Modal.jsx'
 import AnimalIcon from './AnimalIcon.jsx'
 import { REGIONS_17 } from '../data/board.js'
 import { sfx } from '../game/sound.js'
 import { ro } from '../game/korean.js'
 
-const N = REGIONS_17.length
-const SLICE = 360 / N
 const R = 230
-const COLORS = ['#ffe7a8', '#cfe6ff', '#ffd6cf', '#d4f1df', '#eadcff']
 
-function slicePath(i) {
-  const a0 = ((i * SLICE - 90 - SLICE / 2) * Math.PI) / 180
-  const a1 = (((i + 1) * SLICE - 90 - SLICE / 2) * Math.PI) / 180
-  return `M0 0 L${R * Math.cos(a0)} ${R * Math.sin(a0)} A${R} ${R} 0 0 1 ${R * Math.cos(a1)} ${R * Math.sin(a1)} Z`
-}
-
-export default function Roulette({ team, onDone }) {
+function Wheel({ team, tone, kicker, title, hub, items, labelSize = 26, resultFor, onDone }) {
+  const N = items.length
+  const SLICE = 360 / N
   const [rotation, setRotation] = useState(0)
   const [phase, setPhase] = useState('ready') // ready | spinning | result
   const [picked, setPicked] = useState(null)
   const timers = useRef([])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+
+  const slicePath = (i) => {
+    const a0 = ((i * SLICE - 90 - SLICE / 2) * Math.PI) / 180
+    const a1 = (((i + 1) * SLICE - 90 - SLICE / 2) * Math.PI) / 180
+    return `M0 0 L${R * Math.cos(a0)} ${R * Math.sin(a0)} A${R} ${R} 0 0 1 ${R * Math.cos(a1)} ${R * Math.sin(a1)} Z`
+  }
 
   const spin = () => {
     if (phase !== 'ready') return
@@ -34,45 +37,46 @@ export default function Roulette({ team, onDone }) {
       t += 40 + k * k * 0.32
       timers.current.push(setTimeout(sfx.tick, t))
     }
-    timers.current.push(setTimeout(() => { setPicked(REGIONS_17[idx]); setPhase('result'); sfx.event() }, 4300))
+    timers.current.push(setTimeout(() => { setPicked(idx); setPhase('result'); sfx.event() }, 4300))
   }
 
+  const result = picked !== null ? resultFor(items[picked]) : null
+
   return (
-    <Modal tone="sejong" wide>
+    <Modal tone={tone} wide>
       <span className="team-tag" style={{ '--team': team.color }}>
         <AnimalIcon animal={team.animal} size={30} /> {team.name}
       </span>
-      <p className="modal-kicker">세종특별자치시 도착</p>
-      <h2 className="modal-title">긴급 출장 명령!</h2>
+      <p className="modal-kicker">{kicker}</p>
+      <h2 className="modal-title">{title}</h2>
       <div className="roulette">
         <div className="roulette-pointer" />
         <svg viewBox="-250 -250 500 500" className="roulette-svg">
-          <g style={{ transform: `rotate(${rotation}deg)`, transition: phase === 'spinning' || phase === 'result' ? 'transform 4.2s cubic-bezier(.12,.7,.18,1)' : 'none' }}>
-            {REGIONS_17.map((name, i) => {
-              const ang = i * SLICE
-              return (
-                <g key={name}>
-                  <path d={slicePath(i)} fill={COLORS[i % COLORS.length]} stroke="#fff" strokeWidth="3" />
-                  <text transform={`rotate(${ang}) translate(0 ${-R + 46})`} textAnchor="middle" className={`roulette-label ${picked === name ? 'is-picked' : ''}`}>
-                    {name}
-                  </text>
-                </g>
-              )
-            })}
+          <g style={{ transform: `rotate(${rotation}deg)`, transition: phase === 'ready' ? 'none' : 'transform 4.2s cubic-bezier(.12,.7,.18,1)' }}>
+            {items.map((it, i) => (
+              <g key={i}>
+                <path d={slicePath(i)} fill={it.color} stroke="#fff" strokeWidth="3" />
+                <text
+                  transform={`rotate(${i * SLICE}) translate(0 ${-R + 46})`}
+                  textAnchor="middle"
+                  className={`roulette-label ${picked === i ? 'is-picked' : ''}`}
+                  style={{ fontSize: labelSize }}
+                >
+                  {it.label}
+                </text>
+              </g>
+            ))}
           </g>
           <circle r="44" fill="#2a2420" />
-          <text y="9" textAnchor="middle" className="roulette-hub">출장</text>
+          <text y="9" textAnchor="middle" className="roulette-hub">{hub}</text>
         </svg>
       </div>
-      {phase === 'result' ? (
+      {result ? (
         <>
-          <p className="roulette-result">
-            {picked === '세종' ? '세종에서 그대로 근무합니다' : `${ro(picked)} 출장 발령!`}
-          </p>
+          <p className={`roulette-result ${result.tone || ''}`}>{result.text}</p>
+          {result.sub && <p className="modal-desc">{result.sub}</p>}
           <div className="modal-actions">
-            <button className="btn-primary" onClick={() => onDone(picked)}>
-              {picked === '세종' ? '확인' : '헬리콥터 출발'}
-            </button>
+            <button className="btn-primary" onClick={() => onDone(items[picked])}>{result.button}</button>
           </div>
         </>
       ) : (
@@ -83,5 +87,62 @@ export default function Roulette({ team, onDone }) {
         </div>
       )}
     </Modal>
+  )
+}
+
+const REGION_COLORS = ['#ffe7a8', '#cfe6ff', '#ffd6cf', '#d4f1df', '#eadcff']
+
+export function SejongRoulette({ team, onDone }) {
+  const items = REGIONS_17.map((name, i) => ({ label: name, color: REGION_COLORS[i % REGION_COLORS.length] }))
+  return (
+    <Wheel
+      team={team}
+      tone="sejong"
+      kicker="세종특별자치시 도착"
+      title="긴급 출장 명령!"
+      hub="출장"
+      items={items}
+      resultFor={(it) =>
+        it.label === '세종'
+          ? { text: '세종에서 그대로 근무합니다', button: '확인' }
+          : { text: `${ro(it.label)} 출장 발령!`, button: '헬리콥터 출발' }}
+      onDone={(it) => onDone(it.label)}
+    />
+  )
+}
+
+// 보상 룰렛 칸: good(좋음) / bad(나쁨) / none(꽝)이 번갈아 놓여 있어요.
+// 칸을 바꾸거나 추가하려면 이 목록만 고치면 됩니다. (효과는 App.jsx 의 applyBonus)
+const GOOD = '#cdeedb'
+const BAD = '#ffd3cc'
+export const BONUS_ITEMS = [
+  { key: 'extra', label: '한 번 더', color: GOOD, text: '윷을 한 번 더 던져요!' },
+  { key: 'rest', label: '한 턴 쉬기', color: BAD, text: '다음 차례를 한 번 쉬어요' },
+  { key: 'piggy', label: '말 업기', color: GOOD, text: '대기 중인 우리 말 하나를 업어요!' },
+  { key: 'back1', label: '한 칸 뒤로', color: BAD, text: '한 칸 뒤로 물러나요' },
+  { key: 'swap', label: '위치 바꾸기', color: GOOD, text: '상대 말과 자리를 바꿔요!', sub: '확인을 누른 뒤 지도에서 바꿀 상대 말을 누르세요.' },
+  { key: 'back2', label: '두 칸 뒤로', color: BAD, text: '두 칸 뒤로 물러나요' },
+  { key: 'fwd2', label: '두 칸 앞으로', color: GOOD, text: '두 칸 앞으로 성큼!' },
+  { key: 'none', label: '꽝', color: '#ece7de', text: '꽝! 아무 일도 없어요' },
+]
+
+export function BonusRoulette({ team, nodeName, onDone }) {
+  return (
+    <Wheel
+      team={team}
+      tone="quiz"
+      kicker={`${nodeName} 퀴즈 정답!`}
+      title="보상 룰렛"
+      hub="보상"
+      items={BONUS_ITEMS}
+      labelSize={24}
+      resultFor={(it) => ({
+        text: it.text,
+        sub: it.sub,
+        tone: it.color === GOOD ? 'is-good' : it.color === BAD ? 'is-bad' : '',
+        button: '확인',
+      })}
+      onDone={onDone}
+    />
   )
 }

@@ -68,7 +68,7 @@ export const nodeByName = (name) => NODES.find((n) => n.short === name || n.name
 export const EVENT_INFO = {
   jeju: { title: '제주', desc: '풍랑주의보(1회 쉬기) 또는 비행기 타고 서울로' },
   sejong: { title: '세종', desc: '긴급 출장 명령 룰렛으로 전국 어디든 순간 이동' },
-  quiz: { title: '퀴즈 칸', desc: '행정구역 퀴즈 시간! 맞히면 퀴즈 점수 +1' },
+  quiz: { title: '퀴즈 칸', desc: '행정구역 퀴즈! 맞히면 보상 룰렛을 돌려요 (좋은 칸·나쁜 칸이 섞여 있어요)' },
   kumgang: { title: '금강산국제관광특구', desc: '일만 이천 봉 구경! 윷을 한 번 더 던져요' },
   junction: { title: '갈림길 (인천, 강원)', desc: '갈림길에 딱 멈추면 다음에 갈 길을 고를 수 있어요' },
 }

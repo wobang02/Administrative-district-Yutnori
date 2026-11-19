@@ -2,7 +2,7 @@
 import Token from './Token.jsx'
 import AnimalIcon from './AnimalIcon.jsx'
 
-export default function Scoreboard({ teams, pieces, turn, rest, quiz, selectedIds, pieceHandlers, dragOverNode, onSetTurn, onClearRest }) {
+export default function Scoreboard({ teams, pieces, turn, rest, selectedIds, pieceHandlers, dragOverNode, onSetTurn, onClearRest }) {
   return (
     <div className="scoreboard">
       {teams.map((t) => {
@@ -29,7 +29,6 @@ export default function Scoreboard({ teams, pieces, turn, rest, quiz, selectedId
             <div className="team-stats">
               <div className="stat stat-goal"><b>{goal}</b><span>/ {mine.length} 도착</span></div>
               <div className="stat"><b>{board}</b><span>판 위</span></div>
-              <div className="stat"><b>{quiz[t.id] || 0}</b><span>퀴즈</span></div>
             </div>
             <div className={`home-row ${dragOverNode === 'home' ? 'is-over' : ''}`} data-drop="home">
               <span className="home-label" data-drop="home">대기 {home.length}</span>
